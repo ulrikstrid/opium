@@ -6,13 +6,13 @@ open Opium_kernel.Rock
     - Easy handling of routes and bodies
     - Automatic generation of a command line app *)
 
-type t [@@deriving sexp_of]
 (** An opium app is a simple builder wrapper around a rock app *)
+type t
 
 val empty : t
 (** A basic empty app *)
 
-type builder = t -> t [@@deriving sexp_of]
+type builder = t -> t
 (** A builder is a function that transforms an [app] by adding some
     functionality. Builders are usuallys composed with a base app using (|>) to
     create a full app *)
@@ -23,7 +23,7 @@ val ssl : cert:string -> key:string -> builder
 
 val cmd_name : string -> builder
 
-type route = string -> Handler.t -> builder [@@deriving sexp_of]
+type route = string -> Handler.t -> builder
 (** A route is a function that returns a buidler that hooks up a handler to a
     url mapping *)
 
@@ -40,28 +40,28 @@ val delete : route
 
 val put : route
 
-val patch : route
-(** Less common method specific routes *)
+(* val patch : route *)
+(** Less common method specific routes  *)
 
 val options : route
 
 val head : route
 
-val any : Cohttp.Code.meth list -> route
+val any : Httpaf.Method.t list -> route
 (** any [methods] will bind a route to any http method inside of [methods] *)
 
 val all : route
 (** all [methods] will bind a route to a URL regardless of the http method. You
     may escape the actual method used from the request passed. *)
 
-val action : Cohttp.Code.meth -> route
+val action : Httpaf.Method.t -> route
 
 val middleware : Middleware.t -> builder
 
 val to_rock : t -> Opium_kernel.Rock.App.t
 (** Convert an opium app to a rock app *)
 
-val start : t -> unit Lwt.t
+val start : t -> Lwt_io.server Lwt.t
 (** Start an opium server. The thread returned can be cancelled to shutdown the
     server *)
 
@@ -71,14 +71,15 @@ val run_command : t -> unit
 (* Run a cmdliner command from an app. Does not launch Lwt's event loop. `Error
    is returned if the command line arguments are incorrect. `Not_running is
    returned if the command was completed without the server being launched *)
-val run_command' : t -> [> `Ok of unit Lwt.t | `Error | `Not_running]
+val run_command' : t -> [> `Ok of Lwt_io.server Lwt.t | `Error | `Not_running ]
 
 type body =
   [ `Html of string
   | `Json of Ezjsonm.t
   | `Xml of string
   | `String of string
-  | `Streaming of string Lwt_stream.t ]
+  | `Streaming of string Lwt_stream.t
+  | `Bigstring of Bigstringaf.t]
 (** Convenience functions for a running opium app *)
 
 val json_of_body_exn : Request.t -> Ezjsonm.t Lwt.t
@@ -96,27 +97,27 @@ val param : Request.t -> string -> string
 val splat : Request.t -> string list
 
 val respond :
-     ?headers:Cohttp.Header.t
-  -> ?code:Cohttp.Code.status_code
+     ?headers:Httpaf.Headers.t
+  -> ?code:Httpaf.Status.t
   -> body
   -> Response.t
 
 (* Same as return (respond ...) *)
 val respond' :
-     ?headers:Cohttp.Header.t
-  -> ?code:Cohttp.Code.status_code
+     ?headers:Httpaf.Headers.t
+  -> ?code: Httpaf.Status.t
   -> body
   -> Response.t Lwt.t
 
 val create_stream :
      unit
-  -> (   ?headers:Cohttp.Header.t
-      -> ?code:Cohttp.Code.status_code
+  -> (   ?headers:Httpaf.Headers.t
+      -> ?code:Httpaf.Status.t
       -> unit Lwt.t
       -> Response.t Lwt.t)
      * (string -> unit)
 
-val redirect : ?headers:Cohttp.Header.t -> Uri.t -> Response.t
+val redirect : ?headers: Httpaf.Headers.t -> Uri.t -> Response.t
 
 (* Same as return (redirect ...) *)
-val redirect' : ?headers:Cohttp.Header.t -> Uri.t -> Response.t Lwt.t
+val redirect' : ?headers: Httpaf.Headers.t -> Uri.t -> Response.t Lwt.t

@@ -1,4 +1,5 @@
 open Sexplib
+open Sexplib.Std
 
 let return = Lwt.return
 
@@ -6,7 +7,32 @@ let ( >>= ) = Lwt.( >>= )
 
 let ( >>| ) = Lwt.( >|= )
 
-module Body = Cohttp_lwt.Body
+module Body = struct
+  type t = [`Empty | `String of string | `Streaming of string Lwt_stream.t | `Bigstring of Bigstringaf.t]
+
+  let empty = `Empty
+
+  let of_string s = `String s
+
+  let of_stream s = `Streaming s
+
+  let of_bigstring b = `Bigstring b
+
+  (* on cohttp length and to_string returns Lwt.t *)
+  let length = function
+  | `Empty -> 0
+  | `String s -> String.length s
+  | `Streaming s -> -1
+  | `Bigstring b -> Bigstringaf.length b 
+
+  let to_string = function
+    | `Empty -> ""
+    | `String s -> s
+    | `Streaming s -> ""
+    | `Bigstring b -> Bigstringaf.to_string b
+
+  let to_string_promise t = Lwt.return (to_string t)
+end
 
 module Fn = struct
   let compose f g x = f (g x)
