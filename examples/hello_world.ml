@@ -35,6 +35,7 @@ let print_person =
       in
       `Json (person |> json_of_person) |> respond')
 
+
 let _ =
   Logs.set_reporter (Logs_fmt.reporter ()) ;
   Logs.set_level (Some Logs.Debug) ;
