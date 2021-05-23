@@ -19,6 +19,7 @@ let make_connection_handler ~host ~port ?middlewares handler =
   let listen_address = Unix.ADDR_INET (inet_addr, port) in
   let connection_handler addr fd =
     let f ~request_handler ~error_handler =
+      let request_handler (Gluten.{reqd; _}) = request_handler reqd in
       Httpaf_lwt_unix.Server.create_connection_handler
         ~request_handler:(fun _ -> request_handler)
         ~error_handler:(fun _ -> error_handler)
