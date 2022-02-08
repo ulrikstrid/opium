@@ -36,7 +36,7 @@ let benchmark =
   let handler reqd =
     let { Request.target; _ } = Reqd.request reqd in
     let request_body = Reqd.request_body reqd in
-    Body.close_reader request_body;
+    Body.Reader.close request_body;
     match target with
     | "/" -> Reqd.respond_with_string reqd (Response.create ~headers `OK) text
     | _ -> Reqd.respond_with_string reqd (Response.create `Not_found) "Route not found"
@@ -48,11 +48,11 @@ let error_handler ?request:_ error start_response =
   let response_body = start_response Headers.empty in
   (match error with
   | `Exn exn ->
-    Body.write_string response_body (Printexc.to_string exn);
-    Body.write_string response_body "\n"
+    Body.Writer.write_string response_body (Printexc.to_string exn);
+    Body.Writer.write_string response_body "\n"
   | #Status.standard as error ->
-    Body.write_string response_body (Status.default_reason_phrase error));
-  Body.close_writer response_body
+    Body.Writer.write_string response_body (Status.default_reason_phrase error));
+  Body.Writer.close response_body
 ;;
 
 let () =

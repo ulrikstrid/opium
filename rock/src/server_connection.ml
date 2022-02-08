@@ -17,8 +17,8 @@ let default_error_handler ?request:_ error start_response =
   let len = Int.to_string (String.length message) in
   let headers = Headers.of_list [ "Content-Length", len ] in
   let body = start_response headers in
-  Body.write_string body message;
-  Body.close_writer body
+  Body.Writer.write_string body message;
+  Body.Writer.close body
 ;;
 
 let create_error_handler handler =
@@ -39,10 +39,10 @@ let create_error_handler handler =
         let res_body = start_response headers in
         let+ () =
           Lwt_stream.iter
-            (fun s -> Httpaf.Body.write_string res_body s)
+            (fun s -> Httpaf.Body.Writer.write_string res_body s)
             (Body.to_stream body)
         in
-        Httpaf.Body.close_writer res_body)
+        Httpaf.Body.Writer.close res_body)
   in
   error_handler
 ;;
@@ -59,7 +59,7 @@ let read_httpaf_body body =
         Bigstringaf.blit_to_bytes buf ~src_off:off ~dst_off:0 ~len b;
         Lwt.wakeup_later wakeup (Some (Bytes.unsafe_to_string b))
       in
-      Httpaf.Body.schedule_read body ~on_eof ~on_read;
+      Httpaf.Body.Reader.schedule_read body ~on_eof ~on_read;
       promise)
 ;;
 
@@ -87,7 +87,7 @@ let run server_handler ?error_handler app =
         let body =
           let stream = read_httpaf_body req_body in
           Lwt.on_termination (Lwt_stream.closed stream) (fun () ->
-              Httpaf.Body.close_reader req_body);
+              Httpaf.Body.Reader.close req_body);
           Body.of_stream ?length stream
         in
         let write_fixed_response ~headers f status body =
@@ -128,8 +128,8 @@ let run server_handler ?error_handler app =
                   reqd
                   (Httpaf.Response.create ~headers status)
               in
-              let+ () = Lwt_stream.iter (fun s -> Httpaf.Body.write_string rb s) s in
-              Httpaf.Body.flush rb (fun () -> Httpaf.Body.close_writer rb))
+              let+ () = Lwt_stream.iter (fun s -> Httpaf.Body.Writer.write_string rb s) s in
+              Httpaf.Body.Writer.flush rb (fun () -> Httpaf.Body.Writer.close rb))
           (fun exn ->
             Httpaf.Reqd.report_exn reqd exn;
             Lwt.return_unit))
